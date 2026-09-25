@@ -122,7 +122,7 @@ const pieceGroup = new THREE.Group();
 const overlayGroup = new THREE.Group();
 const capturedGroup = new THREE.Group();
 const captureFxGroup = new THREE.Group();
-scene.add(boardGroup, pieceGroup, capturedGroup, overlayGroup, captureFxGroup);
+scene.add(boardGroup, pieceGroup, capturedGroup, captureFxGroup, overlayGroup);
 
 const boardSquares = [];
 const raycaster = new THREE.Raycaster();
@@ -156,23 +156,23 @@ const piecePresets = {
 };
 
 const defaultSettings = {
-  boardMaterial: 'obsidian',
-  pieceMaterial: 'brass',
-  lightColor: boardPresets.obsidian.light,
-  darkColor: boardPresets.obsidian.dark,
-  whitePieceColor: piecePresets.brass.white,
-  blackPieceColor: piecePresets.brass.black,
+  boardMaterial: 'walnut',
+  pieceMaterial: 'ivory',
+  lightColor: boardPresets.walnut.light,
+  darkColor: boardPresets.walnut.dark,
+  whitePieceColor: piecePresets.ivory.white,
+  blackPieceColor: piecePresets.ivory.black,
   knightOrientation: 0,
-  backgroundColor: '#1b2430',
+  backgroundColor: '#8faabd',
   useStl: false,
   showLegalMoves: true,
-  showCaptured: false,
+  showCaptured: true,
   capturedUpright: false,
 };
 
 function loadSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem('rocketBattleChessAppearance') || '{}');
+    const saved = JSON.parse(localStorage.getItem('controllerChessAppearance') || '{}');
     // Migrate the previous built-in background to the new neutral-blue default,
     // while preserving any color the player explicitly chose.
     if (String(saved.backgroundColor || '').toLowerCase() === '#667482') {
@@ -207,7 +207,7 @@ let timedOutColor = null;
 let lastClockTick = null;
 
 function saveSettings() {
-  try { localStorage.setItem('rocketBattleChessAppearance', JSON.stringify(settings)); } catch {}
+  try { localStorage.setItem('controllerChessAppearance', JSON.stringify(settings)); } catch {}
 }
 
 function syncSettingsUI() {
@@ -569,365 +569,6 @@ function renderPieces() {
   updateCapturedControls();
 }
 
-const weaponProfiles = {
-  p: { label: 'micro rocket', style: 'rocket', color: 0xffa544, flightMs: 520, arc: 1.15, salvo: 1, blast: 0.92, fragments: 18 },
-  n: { label: 'homing missile', style: 'rocket', color: 0x63d9ff, flightMs: 760, arc: 2.6, salvo: 1, blast: 1.05, fragments: 22 },
-  b: { label: 'plasma lance', style: 'lance', color: 0xa985ff, flightMs: 340, arc: 0.18, salvo: 1, blast: 0.88, fragments: 20 },
-  r: { label: 'heavy shell', style: 'shell', color: 0xff6758, flightMs: 560, arc: 0.72, salvo: 1, blast: 1.18, fragments: 28 },
-  q: { label: 'seeker salvo', style: 'rocket', color: 0xff62d4, flightMs: 650, arc: 1.75, salvo: 3, blast: 1.32, fragments: 34 },
-  k: { label: 'royal shock orb', style: 'orb', color: 0xffdf72, flightMs: 620, arc: 1.2, salvo: 1, blast: 1.42, fragments: 36 },
-};
-
-function findPieceContainer(square) {
-  return pieceGroup.children.find(child => child.userData?.square === square) || null;
-}
-
-function captureVictimSquare(move) {
-  if (!String(move.flags || '').includes('e')) return move.to;
-  const rank = Number(move.to[1]) + (move.color === 'w' ? -1 : 1);
-  return `${move.to[0]}${rank}`;
-}
-
-function tweenFx(durationMs, update) {
-  return new Promise(resolve => {
-    const start = performance.now();
-    const frame = now => {
-      const t = Math.min(1, Math.max(0, (now - start) / Math.max(1, durationMs)));
-      update(t, now);
-      if (t < 1) requestAnimationFrame(frame);
-      else resolve();
-    };
-    requestAnimationFrame(frame);
-  });
-}
-
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-function disposeFxObject(root) {
-  root.traverse(obj => {
-    obj.geometry?.dispose?.();
-    if (obj.material) disposeMaterial(obj.material);
-  });
-  root.removeFromParent();
-}
-
-function makeProjectile(profile) {
-  const group = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({
-    color: profile.color,
-    toneMapped: false,
-  });
-
-  if (profile.style === 'orb') {
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 18, 12), material);
-    group.add(orb);
-  } else if (profile.style === 'lance') {
-    const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 10), material);
-    bolt.scale.set(0.7, 0.7, 3.2);
-    group.add(bolt);
-  } else {
-    const radius = profile.style === 'shell' ? 0.11 : 0.085;
-    const length = profile.style === 'shell' ? 0.34 : 0.42;
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.82, length, 12), material);
-    body.rotation.x = Math.PI / 2;
-    group.add(body);
-
-    if (profile.style === 'rocket') {
-      const nose = new THREE.Mesh(new THREE.ConeGeometry(radius * 1.02, 0.18, 12), material.clone());
-      nose.rotation.x = -Math.PI / 2;
-      nose.position.z = -length * 0.56;
-      group.add(nose);
-    }
-  }
-
-  const glow = new THREE.PointLight(profile.color, profile.style === 'lance' ? 3.4 : 2.4, 3.2, 2);
-  group.add(glow);
-  return group;
-}
-
-function makeMuzzleFlash(position, color) {
-  const root = new THREE.Group();
-  root.position.copy(position);
-  const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 16, 10),
-    new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.95,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      toneMapped: false,
-    })
-  );
-  const light = new THREE.PointLight(color, 5.5, 4.5, 2);
-  root.add(flash, light);
-  captureFxGroup.add(root);
-
-  tweenFx(150, t => {
-    const s = 1 + easeOutCubic(t) * 3.1;
-    flash.scale.setScalar(s);
-    flash.material.opacity = 1 - t;
-    light.intensity = 5.5 * (1 - t);
-  }).then(() => disposeFxObject(root));
-}
-
-function projectilePath(start, end, arc, lateralOffset = 0) {
-  const side = new THREE.Vector3(-(end.z - start.z), 0, end.x - start.x);
-  if (side.lengthSq() > 1e-6) side.normalize();
-  const s = start.clone().addScaledVector(side, lateralOffset * 0.25);
-  const e = end.clone().addScaledVector(side, lateralOffset * 0.08);
-  const control = s.clone().lerp(e, 0.5);
-  control.y += arc;
-  control.addScaledVector(side, lateralOffset);
-  return new THREE.QuadraticBezierCurve3(s, control, e);
-}
-
-async function flyProjectiles(profile, start, end) {
-  const sideCount = Math.max(1, profile.salvo || 1);
-  const shots = [];
-  const delays = [];
-
-  for (let i = 0; i < sideCount; i++) {
-    const lateral = (i - (sideCount - 1) / 2) * 0.23;
-    const curve = projectilePath(start, end, profile.arc + i * 0.12, lateral);
-    const projectile = makeProjectile(profile);
-    projectile.position.copy(curve.getPoint(0));
-    captureFxGroup.add(projectile);
-
-    const trailPoints = curve.getPoints(42);
-    const trailGeometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
-    trailGeometry.setDrawRange(0, 1);
-    const trail = new THREE.Line(
-      trailGeometry,
-      new THREE.LineBasicMaterial({
-        color: profile.color,
-        transparent: true,
-        opacity: profile.style === 'shell' ? 0.35 : 0.72,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-      })
-    );
-    captureFxGroup.add(trail);
-
-    shots.push({ projectile, trail, curve });
-    delays.push(i * 0.11);
-  }
-
-  makeMuzzleFlash(start, profile.color);
-  const totalMs = profile.flightMs + Math.max(0, sideCount - 1) * 90;
-
-  await tweenFx(totalMs, rawT => {
-    shots.forEach((shot, i) => {
-      const localT = THREE.MathUtils.clamp((rawT - delays[i]) / Math.max(0.01, 1 - delays[i]), 0, 1);
-      const eased = profile.style === 'lance' ? localT : THREE.MathUtils.smoothstep(localT, 0, 1);
-      const point = shot.curve.getPoint(eased);
-      const ahead = shot.curve.getPoint(Math.min(1, eased + 0.012));
-      shot.projectile.position.copy(point);
-      shot.projectile.lookAt(ahead);
-      shot.projectile.visible = localT > 0 && localT < 1;
-      shot.trail.geometry.setDrawRange(0, Math.max(1, Math.floor(eased * 42)));
-      shot.trail.material.opacity = (1 - Math.max(0, eased - 0.78) / 0.22) * (profile.style === 'shell' ? 0.35 : 0.72);
-    });
-  });
-
-  shots.forEach(shot => {
-    disposeFxObject(shot.projectile);
-    disposeFxObject(shot.trail);
-  });
-}
-
-async function explodePiece(position, victimPiece, profile) {
-  const root = new THREE.Group();
-  root.position.copy(position);
-
-  const victimColor = new THREE.Color(victimPiece?.color === 'w' ? settings.whitePieceColor : settings.blackPieceColor);
-  const flashMaterial = new THREE.MeshBasicMaterial({
-    color: profile.color,
-    transparent: true,
-    opacity: 1,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.2, 22, 14), flashMaterial);
-  root.add(flash);
-
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.26, 0.035, 8, 30),
-    new THREE.MeshBasicMaterial({
-      color: profile.color,
-      transparent: true,
-      opacity: 0.9,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      toneMapped: false,
-    })
-  );
-  ring.rotation.x = Math.PI / 2;
-  root.add(ring);
-
-  const blastLight = new THREE.PointLight(profile.color, 10, 7.5, 2);
-  root.add(blastLight);
-
-  const debris = [];
-  for (let i = 0; i < profile.fragments; i++) {
-    const size = 0.045 + Math.random() * 0.085;
-    const chunk = new THREE.Mesh(
-      new THREE.BoxGeometry(size, size * (0.7 + Math.random()), size),
-      new THREE.MeshStandardMaterial({
-        color: victimColor,
-        roughness: 0.52,
-        metalness: 0.28,
-      })
-    );
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.3 + Math.random() * 3.1 * profile.blast;
-    chunk.userData.velocity = new THREE.Vector3(
-      Math.cos(angle) * speed,
-      1.9 + Math.random() * 3.7 * profile.blast,
-      Math.sin(angle) * speed
-    );
-    chunk.userData.spin = new THREE.Vector3(
-      (Math.random() - 0.5) * 10,
-      (Math.random() - 0.5) * 10,
-      (Math.random() - 0.5) * 10
-    );
-    root.add(chunk);
-    debris.push(chunk);
-  }
-
-  const smoke = [];
-  for (let i = 0; i < 7; i++) {
-    const puff = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12 + Math.random() * 0.12, 10, 8),
-      new THREE.MeshBasicMaterial({
-        color: 0x39424d,
-        transparent: true,
-        opacity: 0.42,
-        depthWrite: false,
-      })
-    );
-    const angle = Math.random() * Math.PI * 2;
-    puff.position.set(Math.cos(angle) * 0.08, Math.random() * 0.18, Math.sin(angle) * 0.08);
-    puff.userData.drift = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.35,
-      0.5 + Math.random() * 0.65,
-      (Math.random() - 0.5) * 0.35
-    );
-    root.add(puff);
-    smoke.push(puff);
-  }
-
-  captureFxGroup.add(root);
-
-  await tweenFx(reducedMotion ? 180 : 720, t => {
-    const eased = easeOutCubic(t);
-    flash.scale.setScalar(0.9 + eased * 5.2 * profile.blast);
-    flash.material.opacity = Math.max(0, 1 - t * 1.7);
-    ring.scale.setScalar(1 + eased * 6.5 * profile.blast);
-    ring.material.opacity = Math.max(0, 0.9 * (1 - t));
-    blastLight.intensity = 10 * Math.max(0, 1 - t * 2.4);
-
-    debris.forEach(chunk => {
-      const v = chunk.userData.velocity;
-      const s = t * 0.72;
-      chunk.position.set(
-        v.x * s,
-        v.y * s - 4.3 * s * s,
-        v.z * s
-      );
-      chunk.rotation.x += chunk.userData.spin.x * 0.014;
-      chunk.rotation.y += chunk.userData.spin.y * 0.014;
-      chunk.rotation.z += chunk.userData.spin.z * 0.014;
-      chunk.scale.setScalar(Math.max(0.05, 1 - t * 0.7));
-    });
-
-    smoke.forEach((puff, i) => {
-      puff.position.addScaledVector(puff.userData.drift, 0.014);
-      puff.scale.setScalar(1 + eased * (2.3 + i * 0.12));
-      puff.material.opacity = 0.42 * (1 - t);
-    });
-  });
-
-  disposeFxObject(root);
-}
-
-function setCaptureUiLocked(locked) {
-  resetBtn.disabled = locked;
-  flipBtn.disabled = locked;
-  timedModeBtn.disabled = locked;
-  optionsBtn.disabled = locked;
-  axisVisibilityBtn.disabled = locked;
-  undoBtn.disabled = locked || game.history().length === 0 || Boolean(timedOutColor);
-  optionsPanel.style.pointerEvents = locked ? 'none' : '';
-  timePanel.style.pointerEvents = locked ? 'none' : '';
-}
-
-async function playCaptureSequence(move, attackerPiece) {
-  const victimSquare = captureVictimSquare(move);
-  const attackerContainer = findPieceContainer(move.from);
-  const victimContainer = findPieceContainer(victimSquare);
-  const attackerType = attackerPiece?.type || move.piece || 'p';
-  const victimPiece = victimContainer?.userData?.piece || {
-    type: move.captured,
-    color: move.color === 'w' ? 'b' : 'w',
-  };
-  const profile = weaponProfiles[attackerType] || weaponProfiles.p;
-
-  const startBase = attackerContainer?.position?.clone() || (() => {
-    const p = squareToWorld(move.from);
-    return new THREE.Vector3(p.x, 0.13, p.z);
-  })();
-  const victimBase = victimContainer?.position?.clone() || (() => {
-    const p = squareToWorld(victimSquare);
-    return new THREE.Vector3(p.x, 0.13, p.z);
-  })();
-
-  const start = startBase.clone();
-  start.y = 0.42 + (heightByType[attackerType] || 1.4) * 0.56;
-  const end = victimBase.clone();
-  end.y = 0.38 + (heightByType[victimPiece.type] || 1.4) * 0.5;
-
-  const baseAttackerPosition = attackerContainer?.position?.clone();
-  const baseVictimRotation = victimContainer?.rotation?.clone();
-  const recoilDir = end.clone().sub(start);
-  recoilDir.y = 0;
-  if (recoilDir.lengthSq() > 1e-6) recoilDir.normalize();
-
-  statusEl.textContent = `${move.color === 'w' ? 'White' : 'Black'} fires ${profile.label}…`;
-  modelStatus.textContent = `Weapon: ${profile.label}`;
-  setCaptureUiLocked(true);
-
-  if (!reducedMotion && attackerContainer) {
-    await tweenFx(150, t => {
-      const kick = Math.sin(t * Math.PI) * 0.1;
-      attackerContainer.position.copy(baseAttackerPosition).addScaledVector(recoilDir, -kick);
-    });
-    attackerContainer.position.copy(baseAttackerPosition);
-  }
-
-  if (!reducedMotion) {
-    const flightPromise = flyProjectiles(profile, start, end);
-    if (victimContainer) {
-      await tweenFx(Math.max(120, profile.flightMs * 0.72), t => {
-        const warning = Math.max(0, (t - 0.58) / 0.42);
-        victimContainer.rotation.z = (baseVictimRotation?.z || 0) + Math.sin(t * 35) * 0.045 * warning;
-        victimContainer.rotation.x = (baseVictimRotation?.x || 0) + Math.sin(t * 28) * 0.025 * warning;
-      });
-    }
-    await flightPromise;
-  }
-
-  if (victimContainer) victimContainer.visible = false;
-  await explodePiece(end, victimPiece, profile);
-
-  if (victimContainer && baseVictimRotation) victimContainer.rotation.copy(baseVictimRotation);
-  if (attackerContainer && baseAttackerPosition) attackerContainer.position.copy(baseAttackerPosition);
-}
-
 function clearOverlays() {
   overlayGroup.traverse(obj => {
     if (obj.geometry?.dispose) obj.geometry.dispose();
@@ -1063,7 +704,13 @@ function resetClocks() {
 function tickChessClock(now = performance.now()) {
   if (lastClockTick == null) lastClockTick = now;
 
-  if (!timedMode || timedOutColor || game.isGameOver() || captureAnimating) {
+  if (captureAnimating) {
+    lastClockTick = now;
+    renderClock();
+    return;
+  }
+
+  if (!timedMode || timedOutColor || game.isGameOver()) {
     lastClockTick = now;
     renderClock();
     return;
@@ -1296,6 +943,231 @@ function updatePromotionFocus() {
   promotionButtons.forEach((btn, i) => btn.classList.toggle('controller-focus', i === promotionIndex));
 }
 
+
+const battleWeaponProfiles = {
+  p: { color: 0xffa24a, duration: 390, arc: 0.65, size: 0.10, blast: 0.90, recoil: 0.10 },
+  n: { color: 0x62d7ff, duration: 610, arc: 2.40, size: 0.12, blast: 1.05, recoil: 0.14 },
+  b: { color: 0xc68cff, duration: 300, arc: 0.28, size: 0.11, blast: 0.95, recoil: 0.08 },
+  r: { color: 0xff6161, duration: 500, arc: 0.95, size: 0.16, blast: 1.25, recoil: 0.18 },
+  q: { color: 0xff72d6, duration: 540, arc: 1.55, size: 0.13, blast: 1.40, recoil: 0.14 },
+  k: { color: 0xffd166, duration: 630, arc: 1.95, size: 0.17, blast: 1.50, recoil: 0.17 },
+};
+
+function battleFindPiece(square) {
+  return pieceGroup.children.find(child => child.userData.square === square) || null;
+}
+
+function battleVictimSquare(move) {
+  if (String(move.flags || '').includes('e')) return `${move.to[0]}${move.from[1]}`;
+  return move.to;
+}
+
+function battleDispose(root) {
+  root.traverse(obj => {
+    obj.geometry?.dispose?.();
+    if (Array.isArray(obj.material)) obj.material.forEach(mat => mat?.dispose?.());
+    else obj.material?.dispose?.();
+  });
+}
+
+function battleRemove(root) {
+  if (!root) return;
+  battleDispose(root);
+  root.parent?.remove(root);
+}
+
+function battleProjectile(profile) {
+  const root = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: profile.color,
+    emissive: profile.color,
+    emissiveIntensity: 2.1,
+    roughness: 0.22,
+    metalness: 0.42,
+  });
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(profile.size * 0.55, profile.size * 0.72, profile.size * 3.3, 10),
+    bodyMat
+  );
+  body.rotation.x = Math.PI / 2;
+  root.add(body);
+
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(profile.size * 0.72, profile.size * 1.5, 10),
+    bodyMat.clone()
+  );
+  nose.rotation.x = Math.PI / 2;
+  nose.position.z = profile.size * 2.35;
+  root.add(nose);
+
+  const glow = new THREE.PointLight(profile.color, 3.3, 3.5, 2);
+  glow.position.z = -profile.size * 1.8;
+  root.add(glow);
+
+  return root;
+}
+
+function battleCurvePoint(start, end, arc, t, lateral = 0) {
+  const mid = start.clone().lerp(end, 0.5);
+  mid.y += arc;
+  if (lateral) {
+    const side = new THREE.Vector3().subVectors(end, start);
+    side.cross(new THREE.Vector3(0, 1, 0)).normalize();
+    mid.addScaledVector(side, lateral);
+  }
+  return new THREE.QuadraticBezierCurve3(start, mid, end).getPoint(t);
+}
+
+function battleExplosion(position, profile, victimPiece) {
+  const root = new THREE.Group();
+  root.position.copy(position);
+  captureFxGroup.add(root);
+
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 18, 12),
+    new THREE.MeshBasicMaterial({
+      color: profile.color,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      toneMapped: false,
+    })
+  );
+  root.add(flash);
+
+  const light = new THREE.PointLight(profile.color, 15, 7, 2);
+  root.add(light);
+
+  const debris = [];
+  const debrisColor = victimPiece?.color === 'w' ? settings.whitePieceColor : settings.blackPieceColor;
+  for (let i = 0; i < 26; i++) {
+    const shard = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        0.055 + Math.random() * 0.08,
+        0.05 + Math.random() * 0.11,
+        0.055 + Math.random() * 0.08
+      ),
+      new THREE.MeshStandardMaterial({
+        color: debrisColor,
+        roughness: 0.5,
+        metalness: 0.16,
+      })
+    );
+    const direction = new THREE.Vector3(
+      Math.random() * 2 - 1,
+      0.35 + Math.random() * 1.25,
+      Math.random() * 2 - 1
+    ).normalize();
+    shard.userData.velocity = direction.multiplyScalar(1.7 + Math.random() * 2.8 * profile.blast);
+    shard.userData.spin = new THREE.Vector3(
+      Math.random() * 7 - 3.5,
+      Math.random() * 7 - 3.5,
+      Math.random() * 7 - 3.5
+    );
+    root.add(shard);
+    debris.push(shard);
+  }
+
+  return { root, flash, light, debris };
+}
+
+async function battleAnimateExplosion(position, profile, victimPiece) {
+  const fx = battleExplosion(position, profile, victimPiece);
+  const started = performance.now();
+  const duration = 560;
+
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.min(1, (now - started) / duration);
+      const dt = 0.016;
+
+      fx.flash.scale.setScalar(1 + Math.sin(Math.min(1, t * 1.7) * Math.PI / 2) * 7.2 * profile.blast);
+      fx.flash.material.opacity = 0.95 * (1 - t);
+      fx.light.intensity = 15 * (1 - t) * (1 - t);
+
+      fx.debris.forEach(shard => {
+        const velocity = shard.userData.velocity;
+        velocity.y -= 5.4 * dt;
+        shard.position.addScaledVector(velocity, dt);
+        shard.rotation.x += shard.userData.spin.x * dt;
+        shard.rotation.y += shard.userData.spin.y * dt;
+        shard.rotation.z += shard.userData.spin.z * dt;
+        shard.scale.setScalar(Math.max(0.15, 1 - t * 0.7));
+      });
+
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        battleRemove(fx.root);
+        resolve();
+      }
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+async function battleLaunchProjectile(start, end, profile, lateral = 0) {
+  const projectile = battleProjectile(profile);
+  captureFxGroup.add(projectile);
+  const started = performance.now();
+
+  await new Promise(resolve => {
+    const frame = now => {
+      const t = Math.min(1, (now - started) / profile.duration);
+      const eased = 1 - Math.pow(1 - t, 2);
+      const p = battleCurvePoint(start, end, profile.arc, eased, lateral);
+      const next = battleCurvePoint(start, end, profile.arc, Math.min(1, eased + 0.015), lateral);
+      projectile.position.copy(p);
+      projectile.lookAt(next);
+
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        battleRemove(projectile);
+        resolve();
+      }
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+async function playBattleCapture(move, attackerPiece) {
+  const profile = battleWeaponProfiles[attackerPiece?.type] || battleWeaponProfiles.p;
+  const attackerMesh = battleFindPiece(move.from);
+  const victimSquare = battleVictimSquare(move);
+  const victimMesh = battleFindPiece(victimSquare);
+  const victimPiece = victimMesh?.userData?.piece || {
+    type: move.captured,
+    color: move.color === 'w' ? 'b' : 'w',
+  };
+
+  const fromWorld = squareToWorld(move.from);
+  const victimWorld = squareToWorld(victimSquare);
+  const start = new THREE.Vector3(fromWorld.x, 1.15, fromWorld.z);
+  const end = new THREE.Vector3(victimWorld.x, 0.92, victimWorld.z);
+
+  if (attackerMesh) {
+    const dx = victimWorld.x - fromWorld.x;
+    const dz = victimWorld.z - fromWorld.z;
+    attackerMesh.rotation.y = Math.atan2(dx, dz);
+    attackerMesh.position.x -= Math.sign(dx || 1) * profile.recoil;
+    attackerMesh.position.z -= Math.sign(dz || 1) * profile.recoil;
+  }
+
+  if (attackerPiece?.type === 'q') {
+    await Promise.all([
+      battleLaunchProjectile(start.clone().add(new THREE.Vector3(-0.08, 0.08, 0)), end, profile, -0.42),
+      battleLaunchProjectile(start.clone().add(new THREE.Vector3(0.08, 0.16, 0)), end, profile, 0),
+      battleLaunchProjectile(start.clone().add(new THREE.Vector3(0.0, 0.24, 0.08)), end, profile, 0.42),
+    ]);
+  } else {
+    await battleLaunchProjectile(start, end, profile, 0);
+  }
+
+  if (victimMesh) victimMesh.visible = false;
+  await battleAnimateExplosion(end, profile, victimPiece);
+}
+
+
 async function completeMove(from, to, promotion) {
   if (captureAnimating) return false;
 
@@ -1315,19 +1187,24 @@ async function completeMove(from, to, promotion) {
   cursorSquare = move.to;
   updateOverlays();
 
-  if (move.captured) {
+  if (move.captured && !reducedMotion) {
     captureAnimating = true;
+    undoBtn.disabled = true;
+    resetBtn.disabled = true;
+    flipBtn.disabled = true;
+    sceneHost.setAttribute('aria-busy', 'true');
+
     try {
-      await playCaptureSequence(move, attackerPiece);
-    } catch (error) {
-      console.error('Capture animation failed:', error);
+      await playBattleCapture(move, attackerPiece);
     } finally {
       captureAnimating = false;
-      setCaptureUiLocked(false);
-      lastClockTick = performance.now();
+      resetBtn.disabled = false;
+      flipBtn.disabled = false;
+      sceneHost.removeAttribute('aria-busy');
     }
   }
 
+  lastClockTick = performance.now();
   renderPieces();
   updateStatus();
   updateOverlays();
@@ -1569,7 +1446,6 @@ optionsBtn.addEventListener('click', () => setOptionsVisible(optionsPanel.hidden
 closeOptionsBtn.addEventListener('click', () => setOptionsVisible(false));
 
 function resetGame() {
-  if (captureAnimating) return;
   checkmateOverlayDismissed = false;
   hideCheckmateOverlay();
   game.reset();
@@ -1604,7 +1480,7 @@ checkmateOverlay.addEventListener('keydown', event => {
 });
 
 function undoMove() {
-  if (captureAnimating || timedOutColor) return;
+  if (timedOutColor) return;
   if (pendingPromotion) { hidePromotion(); return; }
   const undone = game.undo();
   if (!undone) return;
@@ -1619,7 +1495,6 @@ function undoMove() {
 undoBtn.addEventListener('click', undoMove);
 
 function flipBoard() {
-  if (captureAnimating) return;
   boardFlipped = !boardFlipped;
   createBoard();
   renderPieces();
