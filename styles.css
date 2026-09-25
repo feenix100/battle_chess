@@ -710,7 +710,7 @@ code { color: #d6e8ff; }
   font-size: 0.74rem;
 }
 
-/* Rocket Battle Chess capture-state polish */
-body.capture-active .scene { cursor: progress; }
-button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: 0.52; }
-.scene-label-top span { letter-spacing: 0.015em; }
+/* Battle Chess capture state */
+#scene[aria-busy="true"] canvas {
+  cursor: wait;
+}
