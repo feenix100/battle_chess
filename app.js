@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm';
 
 const $ = id => document.getElementById(id);
@@ -105,7 +106,7 @@ keyLight.shadow.camera.right = 6;
 keyLight.shadow.camera.top = 6;
 keyLight.shadow.camera.bottom = -6;
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x9bbdff, 1.15);
+const rimLight = new THREE.DirectionalLight(0x9bbdff, 0.62);
 rimLight.position.set(-7, 5, -5);
 scene.add(rimLight);
 
@@ -148,7 +149,7 @@ const boardPresets = {
 };
 
 const piecePresets = {
-  ivory: { white: '#efe8d7', black: '#252525', roughness: 0.36, metalness: 0.02, clearcoat: 0.38 },
+  ivory: { white: '#efe8d7', black: '#252525', roughness: 0.68, metalness: 0.01, clearcoat: 0.05, specularIntensity: 0.28 },
   walnut: { white: '#d3a775', black: '#5a3220', roughness: 0.58, metalness: 0.0, clearcoat: 0.18 },
   brass: { white: '#d3a756', black: '#42484b', roughness: 0.28, metalness: 0.82, clearcoat: 0.3 },
   chrome: { white: '#d9e2ea', black: '#59636c', roughness: 0.16, metalness: 0.96, clearcoat: 0.72 },
@@ -340,7 +341,8 @@ function makePieceMaterial(color) {
     roughness: preset.roughness,
     metalness: preset.metalness,
     clearcoat: preset.clearcoat,
-    clearcoatRoughness: Math.min(0.65, preset.roughness),
+    clearcoatRoughness: Math.min(0.85, Math.max(0.4, preset.roughness)),
+    specularIntensity: preset.specularIntensity ?? 0.45,
     transmission: preset.transmission || 0,
     transparent: Boolean(preset.opacity && preset.opacity < 1),
     opacity: preset.opacity || 1,
@@ -411,7 +413,9 @@ function cloneWithMaterial(proto, material) {
 }
 
 function normalizeStlGeometry(raw, type) {
-  const geometry = raw.clone();
+  const base = raw.clone();
+  base.deleteAttribute('normal');
+  const geometry = mergeVertices(base, 0.0001);
   geometry.computeBoundingBox();
   const box = geometry.boundingBox;
   const size = new THREE.Vector3();
@@ -424,6 +428,7 @@ function normalizeStlGeometry(raw, type) {
   geometry.translate(-center.x, -box.min.y, -center.z);
   geometry.scale(scale, scale, scale);
   geometry.computeVertexNormals();
+  geometry.normalizeNormals();
   geometry.computeBoundingSphere();
   return geometry;
 }
