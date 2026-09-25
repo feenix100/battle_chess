@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#8faabd" />
   <title>Battle Chess | Rain Dust</title>
-  <meta name="description" content="Play Battle Chess in 3D with the original local two-player controls plus projectile and explosion capture animations." />
+  <meta name="description" content="Play Battle Chess in 3D against a selectable White or Black CPU opponent, or use local two-player controls, with projectile and explosion capture animations." />
   <meta name="keywords" content="free chess game, 2 player chess, two player chess, free two player chess game, 3D chess, browser chess, local multiplayer chess, chess game online, chess gamepad" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 <meta name="application-name" content="Battle Chess" />
@@ -50,12 +50,12 @@
     <header class="topbar">
       <div class="brand-block">
         <a class="back-link" href="https://feenix100.github.io/" aria-label="Back to main site">← Main site</a>
-        <p class="eyebrow">Local two-player · 3D · Battle Chess</p>
+        <p class="eyebrow">Local or CPU · 3D · Battle Chess</p>
         <div class="title-row">
           <h1>Battle Chess</h1>
           <span id="turnBadge" class="turn-badge">White to move</span>
         </div>
-        <p class="control-note"><strong>Play your way:</strong> USB game controller, keyboard, or mouse. Captures launch projectiles and explode the defeated piece.</p>
+        <p class="control-note"><strong>Play your way:</strong> Choose local two-player or a White/Black CPU opponent, then use a USB game controller, keyboard, or mouse. Captures launch projectiles and explode the defeated piece.</p>
         <p id="status" class="status" aria-live="polite">Loading board…</p>
       </div>
 
@@ -63,6 +63,8 @@
         <button id="undoBtn" type="button" title="Undo (X on controller)">Undo</button>
         <button id="flipBtn" type="button" title="Flip board (Y on controller)">Flip</button>
         <button id="resetBtn" type="button">New game</button>
+        <button id="cpuModeBtn" type="button" aria-pressed="false" title="Play against the computer">CPU: Off</button>
+        <button id="cpuSideBtn" type="button" title="Choose which color the CPU controls">CPU Side: Black</button>
         <button id="timedModeBtn" type="button" aria-pressed="false" title="Toggle timed chess">Timed: Off</button>
         <button id="battleAnimationsBtn" type="button" aria-pressed="true" title="Toggle projectile and explosion capture animations">Battle Animations: On</button>
         <button id="axisVisibilityBtn" type="button" aria-expanded="false" aria-controls="axisGizmo" title="Show or hide camera axis controls">Show axis</button>
@@ -300,6 +302,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js?v=8"></script>
+  <script type="module" src="./app.js?v=9"></script>
 </body>
 </html>
