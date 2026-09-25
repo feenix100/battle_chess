@@ -16,6 +16,8 @@ const optionsPanel = $('optionsPanel');
 const optionsBtn = $('optionsBtn');
 const closeOptionsBtn = $('closeOptionsBtn');
 const resetBtn = $('resetBtn');
+const cpuModeBtn = $('cpuModeBtn');
+const cpuSideBtn = $('cpuSideBtn');
 const undoBtn = $('undoBtn');
 const flipBtn = $('flipBtn');
 const resetAppearanceBtn = $('resetAppearanceBtn');
@@ -209,6 +211,225 @@ let checkmateOverlayDismissed = false;
 let checkmateActionIndex = 0;
 let pointerStart = null;
 let captureAnimating = false;
+
+const CPU_STORAGE_KEY = 'controllerChessCPU';
+const CPU_MOVE_DELAY_MS = 420;
+const CPU_PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
+
+function loadCpuPreferences() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CPU_STORAGE_KEY) || '{}');
+    return {
+      enabled: Boolean(saved.enabled),
+      color: saved.color === 'w' ? 'w' : 'b',
+    };
+  } catch {
+    return { enabled: false, color: 'b' };
+  }
+}
+
+const initialCpuPreferences = loadCpuPreferences();
+let cpuEnabled = initialCpuPreferences.enabled;
+let cpuColor = initialCpuPreferences.color;
+let cpuThinking = false;
+let cpuTimer = null;
+let cpuTurnToken = 0;
+
+function saveCpuPreferences() {
+  try {
+    localStorage.setItem(CPU_STORAGE_KEY, JSON.stringify({ enabled: cpuEnabled, color: cpuColor }));
+  } catch {}
+}
+
+function cpuColorName(color = cpuColor) {
+  return color === 'w' ? 'White' : 'Black';
+}
+
+function isCpuTurn() {
+  return cpuEnabled && !timedOutColor && !game.isGameOver() && game.turn() === cpuColor;
+}
+
+function syncCpuControls() {
+  cpuModeBtn.textContent = cpuEnabled ? 'CPU: On' : 'CPU: Off';
+  cpuModeBtn.setAttribute('aria-pressed', String(cpuEnabled));
+  cpuModeBtn.title = cpuEnabled ? 'Switch to local two-player mode' : 'Play against the computer';
+  cpuSideBtn.textContent = `CPU Side: ${cpuColorName()}`;
+  cpuSideBtn.setAttribute('aria-label', `CPU controls ${cpuColorName()}. Activate to switch sides.`);
+}
+
+function cancelCpuTurn() {
+  cpuTurnToken += 1;
+  if (cpuTimer != null) {
+    clearTimeout(cpuTimer);
+    cpuTimer = null;
+  }
+  cpuThinking = false;
+  if (!captureAnimating) sceneHost.removeAttribute('aria-busy');
+}
+
+function cpuMoveSpec(move) {
+  return {
+    from: move.from,
+    to: move.to,
+    ...(move.promotion ? { promotion: move.promotion } : {}),
+  };
+}
+
+function cpuMoveOrderScore(move) {
+  let score = 0;
+  if (move.captured) score += (CPU_PIECE_VALUES[move.captured] || 0) * 10 - (CPU_PIECE_VALUES[move.piece] || 0);
+  if (move.promotion) score += (CPU_PIECE_VALUES[move.promotion] || 0) + 700;
+  if (String(move.san || '').includes('#')) score += 100000;
+  else if (String(move.san || '').includes('+')) score += 120;
+  if (String(move.flags || '').includes('k') || String(move.flags || '').includes('q')) score += 45;
+  return score;
+}
+
+function cpuPieceSquareBonus(piece, file, rank, totalMaterial) {
+  const centerDistance = Math.abs(file - 3.5) + Math.abs(rank - 3.5);
+  const center = Math.max(0, 4 - centerDistance);
+  const advance = piece.color === 'w' ? rank : 7 - rank;
+
+  if (piece.type === 'p') return advance * 4 + center * 2;
+  if (piece.type === 'n') return center * 10;
+  if (piece.type === 'b') return center * 6;
+  if (piece.type === 'r') return advance * 1.5 + center * 1.5;
+  if (piece.type === 'q') return center * 2;
+  if (piece.type === 'k') {
+    const endgame = totalMaterial < 2600;
+    return endgame ? center * 7 : -center * 5;
+  }
+  return 0;
+}
+
+function cpuEvaluatePosition() {
+  if (game.isCheckmate()) return game.turn() === cpuColor ? -100000 : 100000;
+  if (game.isDraw()) return 0;
+
+  let totalMaterial = 0;
+  for (const row of game.board()) {
+    for (const piece of row) {
+      if (piece && piece.type !== 'k') totalMaterial += CPU_PIECE_VALUES[piece.type] || 0;
+    }
+  }
+
+  let score = 0;
+  game.board().forEach((row, rowIndex) => {
+    row.forEach((piece, file) => {
+      if (!piece) return;
+      const rank = 7 - rowIndex;
+      const value = CPU_PIECE_VALUES[piece.type] || 0;
+      const positional = cpuPieceSquareBonus(piece, file, rank, totalMaterial);
+      score += (piece.color === cpuColor ? 1 : -1) * (value + positional);
+    });
+  });
+
+  if (game.inCheck()) score += game.turn() === cpuColor ? -28 : 28;
+  return score;
+}
+
+function cpuOrderedMoves() {
+  return game.moves({ verbose: true })
+    .sort((a, b) => cpuMoveOrderScore(b) - cpuMoveOrderScore(a));
+}
+
+function cpuSearch(depth, alpha, beta) {
+  if (depth <= 0 || game.isGameOver()) return cpuEvaluatePosition();
+
+  const maximizing = game.turn() === cpuColor;
+  const moves = cpuOrderedMoves();
+  if (!moves.length) return cpuEvaluatePosition();
+
+  if (maximizing) {
+    let best = -Infinity;
+    for (const move of moves) {
+      game.move(cpuMoveSpec(move));
+      const score = cpuSearch(depth - 1, alpha, beta);
+      game.undo();
+      best = Math.max(best, score);
+      alpha = Math.max(alpha, score);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+
+  let best = Infinity;
+  for (const move of moves) {
+    game.move(cpuMoveSpec(move));
+    const score = cpuSearch(depth - 1, alpha, beta);
+    game.undo();
+    best = Math.min(best, score);
+    beta = Math.min(beta, score);
+    if (beta <= alpha) break;
+  }
+  return best;
+}
+
+function chooseCpuMove() {
+  const moves = cpuOrderedMoves();
+  if (!moves.length) return null;
+
+  // Three plies in quieter positions, two in wider positions. This keeps the
+  // browser responsive while still letting the CPU see tactical replies.
+  const depth = moves.length <= 16 ? 3 : 2;
+  let bestScore = -Infinity;
+  let bestMoves = [];
+
+  for (const move of moves) {
+    game.move(cpuMoveSpec(move));
+    const score = cpuSearch(depth - 1, -Infinity, Infinity);
+    game.undo();
+
+    if (score > bestScore + 0.001) {
+      bestScore = score;
+      bestMoves = [move];
+    } else if (Math.abs(score - bestScore) <= 0.001) {
+      bestMoves.push(move);
+    }
+  }
+
+  return bestMoves[Math.floor(Math.random() * bestMoves.length)] || moves[0];
+}
+
+function scheduleCpuTurn(delay = CPU_MOVE_DELAY_MS) {
+  cancelCpuTurn();
+  if (!isCpuTurn()) {
+    syncCpuControls();
+    return;
+  }
+
+  const token = ++cpuTurnToken;
+  cpuThinking = true;
+  sceneHost.setAttribute('aria-busy', 'true');
+  updateStatus();
+
+  cpuTimer = window.setTimeout(async () => {
+    cpuTimer = null;
+    if (token !== cpuTurnToken || !isCpuTurn()) {
+      cpuThinking = false;
+      if (!captureAnimating) sceneHost.removeAttribute('aria-busy');
+      updateStatus();
+      return;
+    }
+
+    const move = chooseCpuMove();
+    if (!move || token !== cpuTurnToken || !isCpuTurn()) {
+      cpuThinking = false;
+      if (!captureAnimating) sceneHost.removeAttribute('aria-busy');
+      updateStatus();
+      return;
+    }
+
+    await completeMove(move.from, move.to, move.promotion, { byCpu: true });
+
+    if (token === cpuTurnToken) {
+      cpuThinking = false;
+      if (!captureAnimating) sceneHost.removeAttribute('aria-busy');
+      updateStatus();
+      updateOverlays();
+    }
+  }, delay);
+}
 
 const MIN_CUSTOM_MINUTES = 0.25;
 const MAX_CUSTOM_MINUTES = 180;
@@ -768,6 +989,7 @@ function tickChessClock(now = performance.now()) {
   if (clockMs[activeColor] <= 0 && !timedOutColor) {
     clockMs[activeColor] = 0;
     timedOutColor = activeColor;
+    cancelCpuTurn();
     selectedSquare = null;
     legalTargets = [];
     if (pendingPromotion) {
@@ -887,6 +1109,8 @@ function gameStatus() {
   if (game.isInsufficientMaterial()) return 'Draw by insufficient material.';
   if (game.isDraw()) return 'Draw.';
   const side = game.turn() === 'w' ? 'White' : 'Black';
+  if (cpuThinking && isCpuTurn()) return `CPU (${side}) is thinking${game.inCheck() ? ' — in check' : ''}…`;
+  if (isCpuTurn()) return `CPU (${side}) to move${game.inCheck() ? ' — check' : ''}.`;
   return `${side} to move${game.inCheck() ? ' — check' : ''}.`;
 }
 
@@ -955,8 +1179,11 @@ function updateStatus() {
   const text = gameStatus();
   statusEl.textContent = text;
   const side = game.turn() === 'w' ? 'White' : 'Black';
-  turnBadge.textContent = (game.isGameOver() || timedOutColor) ? 'Game over' : `${side} to move`;
-  undoBtn.disabled = game.history().length === 0 || Boolean(timedOutColor);
+  turnBadge.textContent = (game.isGameOver() || timedOutColor)
+    ? 'Game over'
+    : isCpuTurn() ? `${side} · CPU` : `${side} to move`;
+  undoBtn.disabled = game.history().length === 0 || Boolean(timedOutColor) || captureAnimating || cpuThinking;
+  syncCpuControls();
   updateCapturedControls();
   renderHistory();
   renderClock();
@@ -1219,8 +1446,10 @@ async function playBattleCapture(move, attackerPiece) {
 }
 
 
-async function completeMove(from, to, promotion) {
+async function completeMove(from, to, promotion, { byCpu = false } = {}) {
   if (captureAnimating) return false;
+  if (!byCpu && (cpuThinking || isCpuTurn())) return false;
+  if (byCpu && (!cpuEnabled || game.turn() !== cpuColor || timedOutColor || game.isGameOver())) return false;
 
   if (timedMode) {
     tickChessClock(performance.now());
@@ -1259,6 +1488,7 @@ async function completeMove(from, to, promotion) {
   renderPieces();
   updateStatus();
   updateOverlays();
+  if (!byCpu) scheduleCpuTurn();
   return true;
 }
 
@@ -1288,7 +1518,7 @@ promotionDialog.addEventListener('keydown', event => {
 });
 
 function selectSquare(square) {
-  if (captureAnimating || pendingPromotion || game.isGameOver() || timedOutColor) return;
+  if (captureAnimating || cpuThinking || isCpuTurn() || pendingPromotion || game.isGameOver() || timedOutColor) return;
   cursorSquare = square;
   const piece = game.get(square);
 
@@ -1497,6 +1727,7 @@ optionsBtn.addEventListener('click', () => setOptionsVisible(optionsPanel.hidden
 closeOptionsBtn.addEventListener('click', () => setOptionsVisible(false));
 
 function resetGame() {
+  cancelCpuTurn();
   checkmateOverlayDismissed = false;
   hideCheckmateOverlay();
   game.reset();
@@ -1509,8 +1740,39 @@ function resetGame() {
   renderPieces();
   updateStatus();
   updateOverlays();
+  scheduleCpuTurn(560);
 }
 resetBtn.addEventListener('click', resetGame);
+
+cpuModeBtn.addEventListener('click', () => {
+  cancelCpuTurn();
+  cpuEnabled = !cpuEnabled;
+  saveCpuPreferences();
+
+  if (cpuEnabled && game.turn() === cpuColor) {
+    if (pendingPromotion) hidePromotion();
+    cancelSelection();
+  }
+
+  syncCpuControls();
+  updateStatus();
+  scheduleCpuTurn();
+});
+
+cpuSideBtn.addEventListener('click', () => {
+  cancelCpuTurn();
+  cpuColor = cpuColor === 'w' ? 'b' : 'w';
+  saveCpuPreferences();
+
+  if (cpuEnabled && game.turn() === cpuColor) {
+    if (pendingPromotion) hidePromotion();
+    cancelSelection();
+  }
+
+  syncCpuControls();
+  updateStatus();
+  scheduleCpuTurn();
+});
 checkmateNewGameBtn.addEventListener('click', resetGame);
 checkmateViewBoardBtn.addEventListener('click', viewFinalBoard);
 checkmateNewGameBtn.addEventListener('focus', () => { checkmateActionIndex = 0; });
@@ -1531,10 +1793,22 @@ checkmateOverlay.addEventListener('keydown', event => {
 });
 
 function undoMove() {
-  if (timedOutColor) return;
+  if (timedOutColor || captureAnimating) return;
+  cancelCpuTurn();
   if (pendingPromotion) { hidePromotion(); return; }
+
   const undone = game.undo();
-  if (!undone) return;
+  if (!undone) {
+    scheduleCpuTurn();
+    return;
+  }
+
+  // In CPU mode, undo a complete human+CPU exchange when possible so control
+  // returns to the human side instead of immediately giving the CPU another turn.
+  if (cpuEnabled && game.history().length > 0 && game.turn() === cpuColor) {
+    game.undo();
+  }
+
   selectedSquare = null;
   legalTargets = [];
   refreshLastMoveFromHistory();
@@ -1542,6 +1816,7 @@ function undoMove() {
   renderPieces();
   updateStatus();
   updateOverlays();
+  scheduleCpuTurn(560);
 }
 undoBtn.addEventListener('click', undoMove);
 
@@ -1772,6 +2047,7 @@ function animate(now = 0) {
 
 setAxisGizmoVisible(false);
 syncSettingsUI();
+syncCpuControls();
 applyBackgroundColor();
 applySceneLightColor();
 createBoard();
@@ -1780,3 +2056,4 @@ updateStatus();
 updateOverlays();
 resize();
 animate();
+scheduleCpuTurn(700);
