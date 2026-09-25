@@ -4,32 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#8faabd" />
-  <title>Rocket Battle Chess 3D | Rain Dust</title>
-  <meta name="description" content="Play 3D chess where legal captures launch rockets, plasma bolts, shells, and explosive effects." />
+  <title>Battle Chess | Rain Dust</title>
+  <meta name="description" content="Play Battle Chess in 3D with the original local two-player controls plus projectile and explosion capture animations." />
   <meta name="keywords" content="free chess game, 2 player chess, two player chess, free two player chess game, 3D chess, browser chess, local multiplayer chess, chess game online, chess gamepad" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-<meta name="application-name" content="Rocket Battle Chess 3D" />
+<meta name="application-name" content="Battle Chess" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="canonical" href="https://feenix100.github.io/battle_chess/" />
-
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Rocket Battle Chess 3D" />
-  <meta property="og:description" content="Play a Battle Chess-inspired 3D chess game with projectile captures and explosive effects." />
-  <meta property="og:url" content="https://feenix100.github.io/battle_chess/" />
+  <meta property="og:title" content="Battle Chess" />
+  <meta property="og:description" content="The original 3D chess game with projectile and explosion capture animations." />
   <meta property="og:site_name" content="Rain Dust Blog" />
   <meta property="og:locale" content="en_US" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Rocket Battle Chess 3D" />
-  <meta name="twitter:description" content="A free local two-player 3D chess game for the browser. Play with a USB game controller, keyboard, or mouse." />
+  <meta name="twitter:title" content="Battle Chess" />
+  <meta name="twitter:description" content="The original 3D chess game with projectile and explosion capture animations." />
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": ["VideoGame", "WebApplication"],
-    "name": "Rocket Battle Chess 3D",
-    "description": "A Battle Chess-inspired 3D chess game where legal captures trigger projectile and explosion animations.",
-    "url": "https://feenix100.github.io/battle_chess/",
+    "name": "Free 2 Player 3D Chess Game",
+    "description": "A free local two-player 3D chess game that runs in a modern web browser.",
+    "url": "https://feenix100.github.io/posts/9-19-2026-free-2-player-3d-chess-game.html",
     "applicationCategory": "GameApplication",
     "operatingSystem": "Any",
     "browserRequirements": "Requires JavaScript and WebGL in a modern browser",
@@ -39,7 +36,7 @@
     "inLanguage": "en"
   }
   </script>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=1" />
   <script type="importmap">
   {
     "imports": {
@@ -54,13 +51,13 @@
     <header class="topbar">
       <div class="brand-block">
         <a class="back-link" href="https://feenix100.github.io/" aria-label="Back to main site">← Main site</a>
-        <p class="eyebrow">Battle Chess inspired · 3D · projectile captures</p>
+        <p class="eyebrow">Local two-player · 3D · Battle Chess</p>
         <div class="title-row">
-          <h1>Rocket Battle Chess</h1>
+          <h1>Battle Chess</h1>
           <span id="turnBadge" class="turn-badge">White to move</span>
         </div>
-        <p class="control-note"><strong>Battle mode:</strong> every legal capture fires a piece-specific projectile before the target explodes.</p>
-        <p id="status" class="status" aria-live="polite">Arming battlefield…</p>
+        <p class="control-note"><strong>Play your way:</strong> USB game controller, keyboard, or mouse. Captures launch projectiles and explode the defeated piece.</p>
+        <p id="status" class="status" aria-live="polite">Loading board…</p>
       </div>
 
       <nav class="actions" aria-label="Game controls">
@@ -77,7 +74,7 @@
       <div class="board-column">
         <section class="board-card" aria-label="Chess board">
           <div id="scene" class="scene" tabindex="0" role="application" aria-label="3D chess board. Play with a mouse, keyboard, or USB game controller. Arrow keys or WASD move the highlighted cursor relative to the camera. Enter selects. Escape cancels. Q and E rotate the camera.">
-            <div class="scene-label scene-label-top"><span id="modelStatus">Weapons armed · built-in geometry</span></div>
+            <div class="scene-label scene-label-top"><span id="modelStatus">Piece set: built-in geometry</span></div>
             <div class="scene-label scene-label-bottom"><span id="controllerStatus">USB game controller: not connected</span></div>
 
             <div id="axisGizmo" class="axis-gizmo" aria-label="Camera axis orientation" hidden>
@@ -292,6 +289,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=1"></script>
 </body>
 </html>
