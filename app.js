@@ -67,7 +67,7 @@ renderer.toneMappingExposure = 1.05;
 sceneHost.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x8faabd, 26, 48);
+scene.fog = null;
 
 const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
 camera.position.set(8.2, 8.1, 8.4);
@@ -96,8 +96,8 @@ controls.addEventListener('start', () => {
   clearAxisSelection();
 });
 
-scene.add(new THREE.HemisphereLight(0xe5efff, 0x1e2024, 1.6));
-const keyLight = new THREE.DirectionalLight(0xfff5e8, 3.2);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x2b2b2b, 0.9));
+const keyLight = new THREE.DirectionalLight(0xfff8ee, 2.35);
 keyLight.position.set(5, 10, 6);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
@@ -106,7 +106,7 @@ keyLight.shadow.camera.right = 6;
 keyLight.shadow.camera.top = 6;
 keyLight.shadow.camera.bottom = -6;
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x9bbdff, 0.62);
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.22);
 rimLight.position.set(-7, 5, -5);
 scene.add(rimLight);
 
@@ -149,7 +149,7 @@ const boardPresets = {
 };
 
 const piecePresets = {
-  ivory: { white: '#efe8d7', black: '#252525', roughness: 0.68, metalness: 0.01, clearcoat: 0.05, specularIntensity: 0.28 },
+  ivory: { white: '#e8e3d8', black: '#242424', roughness: 0.82, metalness: 0.0, clearcoat: 0.0, specularIntensity: 0.12 },
   walnut: { white: '#d3a775', black: '#5a3220', roughness: 0.58, metalness: 0.0, clearcoat: 0.18 },
   brass: { white: '#d3a756', black: '#42484b', roughness: 0.28, metalness: 0.82, clearcoat: 0.3 },
   chrome: { white: '#d9e2ea', black: '#59636c', roughness: 0.16, metalness: 0.96, clearcoat: 0.72 },
@@ -233,7 +233,7 @@ function applyBackgroundColor() {
   settings.backgroundColor = color;
   document.documentElement.style.setProperty('--bg', color);
   document.documentElement.style.setProperty('--scene-bg', color);
-  scene.fog.color.set(color);
+  if (scene.fog) scene.fog.color.set(color);
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   if (themeMeta) themeMeta.setAttribute('content', color);
 }
