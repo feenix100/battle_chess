@@ -122,7 +122,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, #scene:focus-vi
 }
 .actions button { background: rgba(27, 34, 42, 0.56); }
 .actions button.primary { background: rgba(34, 60, 96, 0.68); }
-#timedModeBtn[aria-pressed="true"] {
+#timedModeBtn[aria-pressed="true"],
+#cpuModeBtn[aria-pressed="true"] {
   border-color: rgba(143, 185, 255, 0.52);
   background: rgba(55, 92, 142, 0.78);
   color: #f7fbff;
