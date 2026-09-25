@@ -39,6 +39,7 @@ const checkmateSummary = $('checkmateSummary');
 const checkmateNewGameBtn = $('checkmateNewGameBtn');
 const checkmateViewBoardBtn = $('checkmateViewBoardBtn');
 const timedModeBtn = $('timedModeBtn');
+const battleAnimationsBtn = $('battleAnimationsBtn');
 const axisVisibilityBtn = $('axisVisibilityBtn');
 const axisGizmo = $('axisGizmo');
 const timePanel = $('timePanel');
@@ -168,6 +169,7 @@ const defaultSettings = {
   showLegalMoves: true,
   showCaptured: true,
   capturedUpright: false,
+  battleAnimations: true,
 };
 
 function loadSettings() {
@@ -221,6 +223,8 @@ function syncSettingsUI() {
   backgroundColorInput.value = settings.backgroundColor;
   useStlInput.checked = settings.useStl;
   showLegalMovesInput.checked = settings.showLegalMoves;
+  battleAnimationsBtn.textContent = settings.battleAnimations ? 'Battle Animations: On' : 'Battle Animations: Off';
+  battleAnimationsBtn.setAttribute('aria-pressed', String(settings.battleAnimations));
 }
 
 function applyBackgroundColor() {
@@ -794,6 +798,13 @@ function sanitizeCustomMinutes(value) {
 
 timedModeBtn.addEventListener('click', () => setTimedMode(!timedMode));
 
+battleAnimationsBtn.addEventListener('click', () => {
+  settings.battleAnimations = !settings.battleAnimations;
+  battleAnimationsBtn.textContent = settings.battleAnimations ? 'Battle Animations: On' : 'Battle Animations: Off';
+  battleAnimationsBtn.setAttribute('aria-pressed', String(settings.battleAnimations));
+  saveSettings();
+});
+
 timePresetButtons.forEach(button => {
   button.addEventListener('click', () => {
     const minutes = Number(button.dataset.timeMinutes);
@@ -1187,7 +1198,7 @@ async function completeMove(from, to, promotion) {
   cursorSquare = move.to;
   updateOverlays();
 
-  if (move.captured && !reducedMotion) {
+  if (move.captured && settings.battleAnimations && !reducedMotion) {
     captureAnimating = true;
     undoBtn.disabled = true;
     resetBtn.disabled = true;
