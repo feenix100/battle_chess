@@ -21,6 +21,7 @@ const flipBtn = $('flipBtn');
 const resetAppearanceBtn = $('resetAppearanceBtn');
 const boardMaterialSelect = $('boardMaterial');
 const pieceMaterialSelect = $('pieceMaterial');
+const pieceFinishBtn = $('pieceFinishBtn');
 const knightOrientationSelect = $('knightOrientation');
 const backgroundColorInput = $('backgroundColor');
 const sceneLightColorInput = $('sceneLightColor');
@@ -178,6 +179,7 @@ const defaultSettings = {
   showCaptured: true,
   capturedUpright: false,
   battleAnimations: true,
+  pieceFinish: 'matte',
 };
 
 function loadSettings() {
@@ -234,6 +236,8 @@ function syncSettingsUI() {
   showLegalMovesInput.checked = settings.showLegalMoves;
   battleAnimationsBtn.textContent = settings.battleAnimations ? 'Battle Animations: On' : 'Battle Animations: Off';
   battleAnimationsBtn.setAttribute('aria-pressed', String(settings.battleAnimations));
+  pieceFinishBtn.textContent = settings.pieceFinish === 'gloss' ? 'Finish: Gloss' : 'Finish: Matte';
+  pieceFinishBtn.setAttribute('aria-pressed', String(settings.pieceFinish === 'gloss'));
 }
 
 
@@ -353,13 +357,27 @@ function createBoard() {
 
 function makePieceMaterial(color) {
   const preset = piecePresets[settings.pieceMaterial] || piecePresets.ivory;
+  const isGloss = settings.pieceFinish === 'gloss';
+
+  const roughness = isGloss
+    ? Math.max(0.08, preset.roughness * 0.45)
+    : Math.min(0.92, preset.roughness + 0.18);
+
+  const clearcoat = isGloss
+    ? Math.max(0.45, preset.clearcoat ?? 0.55)
+    : 0.0;
+
+  const specularIntensity = isGloss
+    ? Math.max(0.65, preset.specularIntensity ?? 0.75)
+    : Math.min(0.22, preset.specularIntensity ?? 0.18);
+
   const mat = new THREE.MeshPhysicalMaterial({
     color,
-    roughness: preset.roughness,
+    roughness,
     metalness: preset.metalness,
-    clearcoat: preset.clearcoat,
-    clearcoatRoughness: Math.min(0.85, Math.max(0.4, preset.roughness)),
-    specularIntensity: preset.specularIntensity ?? 0.45,
+    clearcoat,
+    clearcoatRoughness: isGloss ? 0.18 : 0.85,
+    specularIntensity,
     transmission: preset.transmission || 0,
     transparent: Boolean(preset.opacity && preset.opacity < 1),
     opacity: preset.opacity || 1,
