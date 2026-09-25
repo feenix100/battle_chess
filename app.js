@@ -447,7 +447,7 @@ function normalizeStlGeometry(raw, type) {
 
 async function getStlGeometry(type) {
   if (stlCache.has(type)) return stlCache.get(type);
-  const promise = stlLoader.loadAsync(new URL(`./stl/${fileByType[type]}`, import.meta.url).href)
+  const promise = stlLoader.loadAsync(new URL(`./stl/${fileByType[type]}?v=rounded-20260924-2`, import.meta.url).href)
     .then(raw => {
       const geometry = normalizeStlGeometry(raw, type);
       loadedTypes.add(type);
