@@ -23,6 +23,7 @@ const boardMaterialSelect = $('boardMaterial');
 const pieceMaterialSelect = $('pieceMaterial');
 const knightOrientationSelect = $('knightOrientation');
 const backgroundColorInput = $('backgroundColor');
+const sceneLightColorInput = $('sceneLightColor');
 const lightColorInput = $('lightColor');
 const darkColorInput = $('darkColor');
 const whitePieceColorInput = $('whitePieceColor');
@@ -166,6 +167,7 @@ const defaultSettings = {
   blackPieceColor: piecePresets.ivory.black,
   knightOrientation: 0,
   backgroundColor: '#8faabd',
+  sceneLightColor: '#fff8ee',
   useStl: false,
   showLegalMoves: true,
   showCaptured: true,
@@ -222,10 +224,20 @@ function syncSettingsUI() {
   blackPieceColorInput.value = settings.blackPieceColor;
   knightOrientationSelect.value = String(settings.knightOrientation);
   backgroundColorInput.value = settings.backgroundColor;
+  sceneLightColorInput.value = settings.sceneLightColor;
   useStlInput.checked = settings.useStl;
   showLegalMovesInput.checked = settings.showLegalMoves;
   battleAnimationsBtn.textContent = settings.battleAnimations ? 'Battle Animations: On' : 'Battle Animations: Off';
   battleAnimationsBtn.setAttribute('aria-pressed', String(settings.battleAnimations));
+}
+
+
+function applySceneLightColor() {
+  const color = /^#[0-9a-f]{6}$/i.test(settings.sceneLightColor)
+    ? settings.sceneLightColor
+    : defaultSettings.sceneLightColor;
+  settings.sceneLightColor = color;
+  keyLight.color.set(color);
 }
 
 function applyBackgroundColor() {
@@ -1552,7 +1564,13 @@ knightOrientationSelect.addEventListener('change', () => {
 });
 backgroundColorInput.addEventListener('input', () => {
   settings.backgroundColor = backgroundColorInput.value;
-  applyBackgroundColor();  saveSettings();
+  applyBackgroundColor();
+  saveSettings();
+});
+sceneLightColorInput.addEventListener('input', () => {
+  settings.sceneLightColor = sceneLightColorInput.value;
+  applySceneLightColor();
+  saveSettings();
 });
 lightColorInput.addEventListener('input', () => { settings.lightColor = lightColorInput.value; saveSettings(); createBoard(); updateOverlays(); });
 darkColorInput.addEventListener('input', () => { settings.darkColor = darkColorInput.value; saveSettings(); createBoard(); updateOverlays(); });
@@ -1576,6 +1594,7 @@ resetAppearanceBtn.addEventListener('click', () => {
   Object.assign(settings, defaultSettings);
   syncSettingsUI();
   applyBackgroundColor();
+  applySceneLightColor();
   saveSettings();
   createBoard();
   renderPieces();
@@ -1731,6 +1750,7 @@ function animate(now = 0) {
 setAxisGizmoVisible(false);
 syncSettingsUI();
 applyBackgroundColor();
+applySceneLightColor();
 createBoard();
 renderPieces();
 updateStatus();
