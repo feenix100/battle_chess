@@ -1,41 +1,17 @@
-# Rocket Battle Chess 3D
+# Battle Chess
 
-A standalone Battle Chess-inspired version of the 3D chess app.
+A standalone version of the original Rain Dust 3D chess game.
 
-Instead of melee combat, legal captures trigger piece-specific projectile attacks and target explosions:
+This version intentionally keeps the original board, chess rules, appearance controls, clocks, mouse/keyboard/gamepad controls, STL support, move history, and captured-piece display.
 
-- Pawn — micro rocket
-- Knight — arcing homing missile
-- Bishop — plasma lance
-- Rook — heavy shell
-- Queen — three-projectile seeker salvo
-- King — royal shock orb
+The main difference is the capture presentation:
 
-The chess result is always determined by standard chess rules via chess.js. The combat sequence is cinematic only.
+- Captures launch a 3D projectile from the attacking piece.
+- Each piece class has a slightly different projectile profile.
+- The captured piece explodes into debris at impact.
+- Timed chess pauses during the capture animation.
+- En passant uses the actual captured pawn square.
+- Promotion happens normally after the capture animation.
+- Reduced-motion users skip the battle animation.
 
-## Run locally
-
-Serve the repository with any static HTTP server, for example:
-
-```bash
-python3 -m http.server 8000
-```
-
-Then open `http://localhost:8000`.
-
-## GitHub Pages
-
-Publish the `main` branch from the repository root in **Settings → Pages**. The expected project URL is:
-
-`https://feenix100.github.io/battle_chess/`
-
-## Controls
-
-Mouse, keyboard, and USB controller controls are inherited from the original 3D chess project. Captures lock move input until the projectile/explosion sequence has completed.
-
-## Notes
-
-- Capture effects pause the chess clock while they play.
-- En passant targets the actually captured pawn square.
-- Capture-promotion fires as a pawn, then the promoted piece appears after the effect.
-- `prefers-reduced-motion` skips projectile travel and uses a shortened impact effect.
+Built with Three.js and chess.js.
