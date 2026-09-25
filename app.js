@@ -136,7 +136,12 @@ const fallbackCache = new Map();
 const loadedTypes = new Set();
 
 const fileByType = {
-  p: 'pawn.stl', n: 'knight.stl', b: 'bishop.stl', r: 'rook.stl', q: 'queen.stl', k: 'king.stl',
+  p: 'pawn-v3.stl',
+  n: 'knight-v3.stl',
+  b: 'bishop-v3.stl',
+  r: 'rook-v3.stl',
+  q: 'queen-v3.stl',
+  k: 'king-v3.stl',
 };
 const heightByType = { p: 1.35, r: 1.55, n: 1.72, b: 1.82, q: 1.96, k: 2.08 };
 
@@ -447,7 +452,7 @@ function normalizeStlGeometry(raw, type) {
 
 async function getStlGeometry(type) {
   if (stlCache.has(type)) return stlCache.get(type);
-  const promise = stlLoader.loadAsync(new URL(`./stl/${fileByType[type]}?v=rounded-20260924-2`, import.meta.url).href)
+  const promise = stlLoader.loadAsync(new URL(`./stl/${fileByType[type]}`, import.meta.url).href)
     .then(raw => {
       const geometry = normalizeStlGeometry(raw, type);
       loadedTypes.add(type);
