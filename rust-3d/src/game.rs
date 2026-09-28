@@ -316,7 +316,6 @@ fn captured_piece_for_move(mv: &Move, moving_color: Color) -> Option<CapturedPie
     })
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
