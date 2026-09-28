@@ -521,7 +521,7 @@ fn hud_system(
     mut scene_sync: ResMut<SceneSync>,
     mut ui_capture: ResMut<UiCapture>,
     mut fx_pause: ResMut<FxPause>,
-) -> Result {
+) -> Result<()> {
     let ctx = contexts.ctx_mut()?;
 
     let mut viewport_ui = egui::Ui::new(
@@ -533,8 +533,8 @@ fn hud_system(
     );
 
     egui::Panel::right("battle-chess-controls")
-        .default_width(330.0)
-        .min_width(290.0)
+        .default_size(330.0)
+        .min_size(290.0)
         .show(&mut viewport_ui, |ui| {
             ui.heading("Battle Chess 3D");
             ui.label(status_text(&game));
