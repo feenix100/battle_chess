@@ -524,10 +524,18 @@ fn hud_system(
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
-    egui::SidePanel::right("battle-chess-controls")
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "battle-chess-root".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::Panel::right("battle-chess-controls")
         .default_width(330.0)
         .min_width(290.0)
-        .show(ctx, |ui| {
+        .show(&mut viewport_ui, |ui| {
             ui.heading("Battle Chess 3D");
             ui.label(status_text(&game));
 
@@ -788,8 +796,8 @@ fn hud_system(
         }
     }
 
-    ui_capture.pointer = ctx.wants_pointer_input();
-    ui_capture.keyboard = ctx.wants_keyboard_input();
+    ui_capture.pointer = ctx.egui_wants_pointer_input();
+    ui_capture.keyboard = ctx.egui_wants_keyboard_input();
     Ok(())
 }
 
@@ -1125,17 +1133,17 @@ fn appearance_system(
         return;
     };
 
-    if let Some(material) = materials.get_mut(&handles.light_square) {
+    if let Some(mut material) = materials.get_mut(&handles.light_square) {
         material.base_color = rgb(appearance.light_square);
         material.perceptual_roughness = appearance.board_roughness;
         material.metallic = appearance.board_metallic;
     }
-    if let Some(material) = materials.get_mut(&handles.dark_square) {
+    if let Some(mut material) = materials.get_mut(&handles.dark_square) {
         material.base_color = rgb(appearance.dark_square);
         material.perceptual_roughness = appearance.board_roughness;
         material.metallic = appearance.board_metallic;
     }
-    if let Some(material) = materials.get_mut(&handles.white_piece) {
+    if let Some(mut material) = materials.get_mut(&handles.white_piece) {
         *material = piece_material(
             rgb(appearance.white_piece),
             appearance.piece_roughness,
@@ -1143,7 +1151,7 @@ fn appearance_system(
             appearance.glossy,
         );
     }
-    if let Some(material) = materials.get_mut(&handles.black_piece) {
+    if let Some(mut material) = materials.get_mut(&handles.black_piece) {
         *material = piece_material(
             rgb(appearance.black_piece),
             appearance.piece_roughness,
