@@ -9,6 +9,7 @@ mod game;
 
 use std::f32::consts::PI;
 
+use anyhow::Result;
 use bevy::{
     math::primitives::InfinitePlane3d,
     prelude::*,
@@ -159,13 +160,6 @@ impl ChessClock {
     fn set_minutes(&mut self, minutes: f32) {
         self.initial_seconds = minutes.clamp(0.25, 180.0) * 60.0;
         self.reset();
-    }
-
-    fn remaining(&self, color: ChessColor) -> f32 {
-        match color {
-            ChessColor::White => self.white_seconds,
-            ChessColor::Black => self.black_seconds,
-        }
     }
 
     fn remaining_mut(&mut self, color: ChessColor) -> &mut f32 {
