@@ -19,10 +19,10 @@ pub fn choose_cpu_move(position: &Chess, cpu_color: Color) -> Option<Move> {
     order_moves(&mut moves);
     let depth = if moves.len() <= 16 { 3 } else { 2 };
     let mut best_score = f32::NEG_INFINITY;
-    let mut best_move = moves[0].clone();
+    let mut best_move = moves[0];
 
     for mv in moves {
-        let Ok(next) = position.clone().play(mv.clone()) else {
+        let Ok(next) = position.clone().play(mv) else {
             continue;
         };
         let score = search(
@@ -97,10 +97,10 @@ fn evaluate(position: &Chess, cpu_color: Color) -> f32 {
     let mut total_material = 0.0;
     for rank in 0..8 {
         for file in 0..8 {
-            if let Some(piece) = position.board().piece_at(square_from_indices(file, rank)) {
-                if piece.role != Role::King {
-                    total_material += piece_value(piece.role);
-                }
+            if let Some(piece) = position.board().piece_at(square_from_indices(file, rank))
+                && piece.role != Role::King
+            {
+                total_material += piece_value(piece.role);
             }
         }
     }
@@ -131,13 +131,13 @@ fn order_moves(moves: &mut [Move]) {
 
 fn move_order_score(mv: &Move) -> f32 {
     let mut score = 0.0;
-    if let Some(captured) = mv.clone().capture() {
-        score += piece_value(captured) * 10.0 - piece_value(mv.clone().role());
+    if let Some(captured) = (*mv).capture() {
+        score += piece_value(captured) * 10.0 - piece_value((*mv).role());
     }
-    if let Some(promotion) = mv.clone().promotion() {
+    if let Some(promotion) = (*mv).promotion() {
         score += piece_value(promotion) + 700.0;
     }
-    if mv.clone().is_castle() {
+    if (*mv).is_castle() {
         score += 45.0;
     }
     score
