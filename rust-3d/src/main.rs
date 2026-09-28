@@ -9,7 +9,6 @@ mod game;
 
 use std::f32::consts::PI;
 
-use anyhow::Result;
 use bevy::{
     math::primitives::InfinitePlane3d,
     prelude::*,
@@ -521,7 +520,7 @@ fn hud_system(
     mut scene_sync: ResMut<SceneSync>,
     mut ui_capture: ResMut<UiCapture>,
     mut fx_pause: ResMut<FxPause>,
-) -> Result<()> {
+) -> Result {
     let ctx = contexts.ctx_mut()?;
 
     let mut viewport_ui = egui::Ui::new(
