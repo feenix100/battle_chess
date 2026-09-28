@@ -315,3 +315,71 @@ fn captured_piece_for_move(mv: &Move, moving_color: Color) -> Option<CapturedPie
         captured_by: moving_color,
     })
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn play_between(game: &mut BattleGame, from: Square, to: Square) {
+        let mv = game
+            .legal_moves_between(from, to)
+            .into_iter()
+            .next()
+            .expect("expected a legal move between test squares");
+        game.play(mv).expect("test move should be legal");
+    }
+
+    #[test]
+    fn starting_position_has_twenty_legal_moves() {
+        let game = BattleGame::new();
+        assert_eq!(game.position().legal_moves().len(), 20);
+        assert_eq!(game.side_to_move(), Color::White);
+        assert_eq!(game.history_len(), 0);
+    }
+
+    #[test]
+    fn play_capture_and_undo_restore_state() {
+        let mut game = BattleGame::new();
+        play_between(&mut game, Square::E2, Square::E4);
+        play_between(&mut game, Square::D7, Square::D5);
+        play_between(&mut game, Square::E4, Square::D5);
+
+        let captured = game.captured_pieces();
+        assert_eq!(captured.len(), 1);
+        assert_eq!(captured[0].piece.role, Role::Pawn);
+        assert_eq!(captured[0].piece.color, Color::Black);
+        assert_eq!(captured[0].captured_by, Color::White);
+        assert_eq!(game.piece_at(Square::D5), Some(Color::White.pawn()));
+
+        assert!(game.undo().is_some());
+        assert!(game.captured_pieces().is_empty());
+        assert_eq!(game.piece_at(Square::E4), Some(Color::White.pawn()));
+        assert_eq!(game.piece_at(Square::D5), Some(Color::Black.pawn()));
+        assert_eq!(game.side_to_move(), Color::White);
+    }
+
+    #[test]
+    fn en_passant_removes_the_actual_victim_square() {
+        let mut game = BattleGame::new();
+        play_between(&mut game, Square::E2, Square::E4);
+        play_between(&mut game, Square::A7, Square::A6);
+        play_between(&mut game, Square::E4, Square::E5);
+        play_between(&mut game, Square::D7, Square::D5);
+
+        let mv = game
+            .legal_moves_between(Square::E5, Square::D6)
+            .into_iter()
+            .find(|candidate| candidate.is_en_passant())
+            .expect("en passant should be legal");
+        assert_eq!(capture_square(&mv), Some(Square::D5));
+
+        game.play(mv).expect("en passant should play");
+        assert_eq!(game.piece_at(Square::D5), None);
+        assert_eq!(game.piece_at(Square::D6), Some(Color::White.pawn()));
+
+        let captured = game.captured_pieces();
+        assert_eq!(captured.len(), 1);
+        assert_eq!(captured[0].piece, Color::Black.pawn());
+    }
+}
