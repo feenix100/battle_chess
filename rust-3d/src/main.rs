@@ -774,8 +774,8 @@ fn hud_system(
                     if ui.button(label).clicked() {
                         chosen = candidates
                             .iter()
-                            .find(|mv| mv.clone().promotion() == Some(role))
-                            .cloned();
+                            .find(|mv| (**mv).promotion() == Some(role))
+                            .copied();
                     }
                 }
             });
@@ -931,12 +931,12 @@ fn handle_square_action(
         return;
     }
 
-    if let Some(piece) = game.piece_at(square) {
-        if piece.color == game.side_to_move() {
-            select_square(square, game, interaction);
-            scene_sync.dirty = true;
-            return;
-        }
+    if let Some(piece) = game.piece_at(square)
+        && piece.color == game.side_to_move()
+    {
+        select_square(square, game, interaction);
+        scene_sync.dirty = true;
+        return;
     }
 
     let Some(from) = interaction.selected else {
@@ -970,10 +970,10 @@ fn select_square(square: Square, game: &BattleGame, interaction: &mut Interactio
     interaction.selected = Some(square);
     interaction.legal_destinations.clear();
     for mv in game.legal_moves_from(square) {
-        if let Some(target) = display_move_to(&mv) {
-            if !interaction.legal_destinations.contains(&target) {
-                interaction.legal_destinations.push(target);
-            }
+        if let Some(target) = display_move_to(&mv)
+            && !interaction.legal_destinations.contains(&target)
+        {
+            interaction.legal_destinations.push(target);
         }
     }
 }
@@ -998,7 +998,7 @@ fn commit_move(
             (Some(from), Some(target)) => Some(CaptureFxRequest {
                 from,
                 target,
-                role: mv.clone().role(),
+                role: mv.role(),
             }),
             _ => None,
         }
@@ -1257,7 +1257,7 @@ fn sync_scene_system(
                 let capture = game
                     .legal_moves_between(selected, *target)
                     .iter()
-                    .any(|mv| mv.clone().is_capture());
+                    .any(|mv| (*mv).is_capture());
                 spawn_highlight(
                     &mut commands,
                     &handles,
@@ -1281,23 +1281,23 @@ fn sync_scene_system(
         0.13,
     );
 
-    if let Some((from, to)) = game.last_move_squares() {
-        if interaction.selected.is_none() {
-            spawn_highlight(
-                &mut commands,
-                &handles,
-                from,
-                handles.cursor.clone(),
-                0.125,
-            );
-            spawn_highlight(
-                &mut commands,
-                &handles,
-                to,
-                handles.cursor.clone(),
-                0.125,
-            );
-        }
+    if let Some((from, to)) = game.last_move_squares()
+        && interaction.selected.is_none()
+    {
+        spawn_highlight(
+            &mut commands,
+            &handles,
+            from,
+            handles.cursor.clone(),
+            0.125,
+        );
+        spawn_highlight(
+            &mut commands,
+            &handles,
+            to,
+            handles.cursor.clone(),
+            0.125,
+        );
     }
 
     if let Some(request) = scene_sync.pending_fx.take() {
