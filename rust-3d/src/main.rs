@@ -14,13 +14,13 @@ use bevy::{
     prelude::*,
     window::{PrimaryWindow, WindowResolution},
 };
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 use shakmaty::{Color as ChessColor, Move, Piece as ChessPiece, Role, Square};
 
 use cpu::choose_cpu_move;
 use game::{
-    capture_square, color_name, display_move_to, move_from, square_from_indices, square_indices,
-    status_text, BattleGame,
+    BattleGame, capture_square, color_name, display_move_to, move_from, square_from_indices,
+    square_indices, status_text,
 };
 
 const CPU_DELAY_SECONDS: f32 = 0.42;
@@ -29,21 +29,19 @@ const BOARD_Y: f32 = 0.0;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.56, 0.67, 0.74)))
-        .add_plugins(
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Battle Chess 3D — Rust".to_owned(),
-                    resolution: WindowResolution::new(1320, 860),
-                    resize_constraints: bevy::window::WindowResizeConstraints {
-                        min_width: 900.0,
-                        min_height: 620.0,
-                        ..default()
-                    },
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Battle Chess 3D — Rust".to_owned(),
+                resolution: WindowResolution::new(1320, 860),
+                resize_constraints: bevy::window::WindowResizeConstraints {
+                    min_width: 900.0,
+                    min_height: 620.0,
                     ..default()
-                }),
+                },
                 ..default()
             }),
-        )
+            ..default()
+        }))
         .add_plugins(EguiPlugin::default())
         .init_resource::<BattleGame>()
         .init_resource::<InteractionState>()
@@ -581,7 +579,10 @@ fn hud_system(
 
             ui.horizontal(|ui| {
                 if ui
-                    .selectable_label(cpu.enabled, if cpu.enabled { "CPU: On" } else { "CPU: Off" })
+                    .selectable_label(
+                        cpu.enabled,
+                        if cpu.enabled { "CPU: On" } else { "CPU: Off" },
+                    )
                     .clicked()
                 {
                     cpu.enabled = !cpu.enabled;
@@ -662,20 +663,36 @@ fn hud_system(
                 egui::ComboBox::from_label("Board")
                     .selected_text(format!("{:?}", appearance.board_preset))
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut appearance.board_preset, BoardPreset::Walnut, "Walnut");
-                        ui.selectable_value(&mut appearance.board_preset, BoardPreset::Marble, "Marble");
+                        ui.selectable_value(
+                            &mut appearance.board_preset,
+                            BoardPreset::Walnut,
+                            "Walnut",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.board_preset,
+                            BoardPreset::Marble,
+                            "Marble",
+                        );
                         ui.selectable_value(
                             &mut appearance.board_preset,
                             BoardPreset::Tournament,
                             "Tournament",
                         );
-                        ui.selectable_value(&mut appearance.board_preset, BoardPreset::Slate, "Slate");
+                        ui.selectable_value(
+                            &mut appearance.board_preset,
+                            BoardPreset::Slate,
+                            "Slate",
+                        );
                         ui.selectable_value(
                             &mut appearance.board_preset,
                             BoardPreset::Obsidian,
                             "Obsidian",
                         );
-                        ui.selectable_value(&mut appearance.board_preset, BoardPreset::Neon, "Neon");
+                        ui.selectable_value(
+                            &mut appearance.board_preset,
+                            BoardPreset::Neon,
+                            "Neon",
+                        );
                     });
                 if previous_board != appearance.board_preset {
                     appearance.apply_board_preset();
@@ -685,12 +702,36 @@ fn hud_system(
                 egui::ComboBox::from_label("Pieces")
                     .selected_text(format!("{:?}", appearance.piece_preset))
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Ivory, "Ivory & ebony");
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Walnut, "Carved wood");
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Brass, "Brass & gunmetal");
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Chrome, "Chrome");
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Glass, "Glass");
-                        ui.selectable_value(&mut appearance.piece_preset, PiecePreset::Neon, "Neon");
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Ivory,
+                            "Ivory & ebony",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Walnut,
+                            "Carved wood",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Brass,
+                            "Brass & gunmetal",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Chrome,
+                            "Chrome",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Glass,
+                            "Glass",
+                        );
+                        ui.selectable_value(
+                            &mut appearance.piece_preset,
+                            PiecePreset::Neon,
+                            "Neon",
+                        );
                     });
                 if previous_piece != appearance.piece_preset {
                     appearance.apply_piece_preset();
@@ -888,8 +929,7 @@ fn board_input_system(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor) else {
         return;
     };
-    let Some(point) =
-        ray.plane_intersection_point(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
+    let Some(point) = ray.plane_intersection_point(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
     else {
         return;
     };
@@ -1284,20 +1324,8 @@ fn sync_scene_system(
     if let Some((from, to)) = game.last_move_squares()
         && interaction.selected.is_none()
     {
-        spawn_highlight(
-            &mut commands,
-            &handles,
-            from,
-            handles.cursor.clone(),
-            0.125,
-        );
-        spawn_highlight(
-            &mut commands,
-            &handles,
-            to,
-            handles.cursor.clone(),
-            0.125,
-        );
+        spawn_highlight(&mut commands, &handles, from, handles.cursor.clone(), 0.125);
+        spawn_highlight(&mut commands, &handles, to, handles.cursor.clone(), 0.125);
     }
 
     if let Some(request) = scene_sync.pending_fx.take() {
@@ -1534,8 +1562,8 @@ fn camera_system(
         yaw.cos() * rig.distance,
     );
     for mut transform in &mut cameras {
-        *transform = Transform::from_translation(position)
-            .looking_at(Vec3::new(0.0, 0.45, 0.0), Vec3::Y);
+        *transform =
+            Transform::from_translation(position).looking_at(Vec3::new(0.0, 0.45, 0.0), Vec3::Y);
     }
 }
 
@@ -1552,12 +1580,7 @@ fn board_material(color: Color, roughness: f32, metallic: f32) -> StandardMateri
     }
 }
 
-fn piece_material(
-    color: Color,
-    roughness: f32,
-    metallic: f32,
-    glossy: bool,
-) -> StandardMaterial {
+fn piece_material(color: Color, roughness: f32, metallic: f32, glossy: bool) -> StandardMaterial {
     StandardMaterial {
         base_color: color,
         perceptual_roughness: if glossy {

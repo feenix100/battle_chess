@@ -5,10 +5,8 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
-use shakmaty::{
-    san::San, Chess, Color, File, Move, Outcome, Piece, Position, Rank, Role, Square,
-};
+use anyhow::{Result, anyhow};
+use shakmaty::{Chess, Color, File, Move, Outcome, Piece, Position, Rank, Role, Square, san::San};
 
 /// A high-level terminal game result used by the native UI.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -150,7 +148,10 @@ impl BattleGame {
     }
 
     pub fn san_history(&self) -> Vec<&str> {
-        self.history.iter().map(|record| record.san.as_str()).collect()
+        self.history
+            .iter()
+            .map(|record| record.san.as_str())
+            .collect()
     }
 
     pub fn formatted_history(&self) -> Vec<String> {

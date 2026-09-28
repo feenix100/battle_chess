@@ -115,12 +115,20 @@ fn evaluate(position: &Chess, cpu_color: Color) -> f32 {
             let value = piece_value(piece.role);
             let positional = square_bonus(piece.role, piece.color, square, total_material);
             let signed = value + positional;
-            score += if piece.color == cpu_color { signed } else { -signed };
+            score += if piece.color == cpu_color {
+                signed
+            } else {
+                -signed
+            };
         }
     }
 
     if position.is_check() {
-        score += if position.turn() == cpu_color { -28.0 } else { 28.0 };
+        score += if position.turn() == cpu_color {
+            -28.0
+        } else {
+            28.0
+        };
     }
     score
 }
