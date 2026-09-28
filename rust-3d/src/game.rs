@@ -109,15 +109,15 @@ impl BattleGame {
 
     /// Plays a legal move and records SAN, previous position, and captured material.
     pub fn play(&mut self, mv: Move) -> Result<()> {
-        if !self.position.is_legal(mv.clone()) {
+        if !self.position.is_legal(mv) {
             return Err(anyhow!("illegal move"));
         }
 
         let previous_position = self.position.clone();
         let moving_color = previous_position.turn();
         let captured = captured_piece_for_move(&mv, moving_color);
-        let san = San::from_move(&previous_position, mv.clone()).to_string();
-        let next_position = previous_position.clone().play(mv.clone())?;
+        let san = San::from_move(&previous_position, mv).to_string();
+        let next_position = previous_position.clone().play(mv)?;
 
         self.position = next_position.clone();
         *self.repetition_counts.entry(next_position).or_insert(0) += 1;
