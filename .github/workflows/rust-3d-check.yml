@@ -29,15 +29,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev libwayland-dev libxkbcommon-dev
-      - name: Format
-        run: cargo fmt --all
-      - name: Commit formatting
+      - name: Prepare formatted locked source
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+      - name: Commit prepared source
         run: |
           if ! git diff --quiet -- .; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add .
-            git commit -m "Format Rust 3D Battle Chess"
+            git commit -m "Format and lock Rust 3D Battle Chess"
             git push origin HEAD:rust-3d-local
           fi
       - name: Check
