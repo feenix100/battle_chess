@@ -23,3 +23,18 @@ The main difference from standard chess presentation is the capture presentation
 - Reduced-motion users skip the battle animation.
 
 Built with Three.js and chess.js.
+
+
+## Native Rust 3D version
+
+A standalone native 3D Rust implementation now lives in [`rust-3d/`](./rust-3d/README.md).
+It uses Bevy for rendering/UI integration and shakmaty for chess rules, and includes
+local play, a built-in CPU opponent, clocks, captured-piece display, appearance
+controls, and battle capture effects.
+
+Run it locally with:
+
+```bash
+cd rust-3d
+cargo run --release
+```
