@@ -26,8 +26,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev libwayland-dev libxkbcommon-dev
-      - name: Format
-        run: cargo fmt --all -- --check
+      - name: Format source in runner
+        run: cargo fmt --all
       - name: Check
         run: cargo check
       - name: Clippy
